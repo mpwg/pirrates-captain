@@ -47,4 +47,4 @@ See `/docs/technical-concept.md` for the recommended stack and target architectu
 
 ## License
 
-MIT
+GPL3

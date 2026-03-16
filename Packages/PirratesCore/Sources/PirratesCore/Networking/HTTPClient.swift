@@ -12,7 +12,7 @@ public struct APIRequest: Sendable {
     }
 }
 
-public protocol HTTPClient {
+public protocol HTTPClient: Sendable {
     func data(for request: URLRequest) async throws -> (Data, URLResponse)
 }
 
@@ -60,5 +60,24 @@ public enum ErrorMapper {
         }
 
         return .unknown(error.localizedDescription)
+    }
+}
+
+public enum ResponseValidator {
+    public static func validate(_ response: URLResponse) throws {
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AppError.unknown("The server returned an invalid response.")
+        }
+
+        switch httpResponse.statusCode {
+        case 200 ..< 300:
+            return
+        case 401, 403:
+            throw AppError.authenticationFailed
+        case 429:
+            throw AppError.rateLimited
+        default:
+            throw AppError.unknown("The server returned HTTP \(httpResponse.statusCode).")
+        }
     }
 }

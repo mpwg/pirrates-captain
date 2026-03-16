@@ -94,6 +94,10 @@ public struct RadarrClient: Sendable {
 
         _ = try await client.send(APIRequest(path: "/api/v3/movie", method: "POST", body: try JSONEncoder().encode(payload)), as: RadarrMovieDTO.self)
     }
+
+    func library() async throws -> [RadarrMovieDTO] {
+        try await client.send(APIRequest(path: "/api/v3/movie"), as: [RadarrMovieDTO].self)
+    }
 }
 
 private struct RadarrAddMoviePayload: Encodable {

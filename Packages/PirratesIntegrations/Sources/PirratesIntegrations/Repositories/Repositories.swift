@@ -392,15 +392,53 @@ public struct ArrServerConnectionValidator: ServerConnectionValidating {
 @MainActor
 public final class LibraryRepository: LibraryProviding {
     private let serverManager: any ServerManaging
+    private let httpClient: HTTPClient
 
-    public init(serverManager: any ServerManaging) {
+    public init(serverManager: any ServerManaging, httpClient: HTTPClient = URLSession.shared) {
         self.serverManager = serverManager
+        self.httpClient = httpClient
     }
 
     public func loadLibrary() async throws -> [LibraryItem] {
-        try serverManager.profiles()
-            .filter(\.isEnabled)
-            .map { LibraryItem(title: "\($0.kind.displayName) library", detail: $0.name, kind: $0.kind) }
+        let profiles = try serverManager.profiles().filter(\.isEnabled)
+        var items: [LibraryItem] = []
+
+        for profile in profiles {
+            do {
+                let apiKey = try serverManager.apiKey(for: profile.id)
+                items += try await loadLibrary(for: profile, apiKey: apiKey)
+            } catch {
+                continue
+            }
+        }
+
+        return items.sorted {
+            if $0.kind == $1.kind {
+                return $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
+            }
+            return $0.kind.displayName < $1.kind.displayName
+        }
+    }
+
+    private func loadLibrary(for profile: ServerProfile, apiKey: String?) async throws -> [LibraryItem] {
+        switch profile.kind {
+        case .sonarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Sonarr.")
+            }
+            return try await SonarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+                .library()
+                .compactMap { SonarrLibraryMapper.map($0, profile: profile) }
+        case .radarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Radarr.")
+            }
+            return try await RadarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+                .library()
+                .compactMap { RadarrLibraryMapper.map($0, profile: profile) }
+        case .lidarr, .prowlarr, .sabnzbd:
+            return []
+        }
     }
 }
 

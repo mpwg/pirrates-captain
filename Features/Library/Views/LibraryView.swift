@@ -16,17 +16,31 @@ struct LibraryView: View {
             case let .failed(error):
                 StatusCard(title: "Library unavailable", subtitle: error.localizedDescription, tint: AppTheme.warning)
             case let .loaded(items):
-                List(items) { item in
-                    VStack(alignment: .leading) {
-                        Text(item.title)
-                        Text(item.detail)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                if items.isEmpty {
+                    StatusCard(
+                        title: "No library items yet",
+                        subtitle: "Connect Sonarr or Radarr and add media to populate the library."
+                    )
+                } else {
+                    List(items) { item in
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.title)
+                            Text(item.detail)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(item.overview)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                            Text("\(item.kind.displayName) • \(item.serverName)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                        .listRowBackground(Color.clear)
                     }
-                    .listRowBackground(Color.clear)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
                 }
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
             }
 
             Spacer()

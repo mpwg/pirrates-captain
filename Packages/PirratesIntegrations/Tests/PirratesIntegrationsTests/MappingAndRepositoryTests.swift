@@ -231,4 +231,41 @@ struct MappingAndRepositoryTests {
             )
         )
     }
+
+    @Test
+    func loadsLibraryAcrossSupportedServices() async throws {
+        let manager = InMemoryServerManager(
+            storedProfiles: [Fixtures.sonarrServer, Fixtures.radarrServer],
+            secrets: [
+                Fixtures.sonarrServer.id: "sonarr-key",
+                Fixtures.radarrServer.id: "radarr-key",
+            ]
+        )
+        let httpClient = MockHTTPClient { request in
+            switch request.url?.path {
+            case "/api/v3/series":
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"[{"title":"Andor","year":2022,"overview":"Rebellion","tvdbId":100,"status":"continuing","network":"Disney+"}]"#,
+                    url: request.url!
+                )
+            case "/api/v3/movie":
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"[{"title":"Dune","year":2021,"overview":"Spice","tmdbId":200,"status":"released","studio":"Legendary"}]"#,
+                    url: request.url!
+                )
+            default:
+                Issue.record("Unexpected path \(request.url?.path ?? "nil")")
+                return makeJSONResponse(statusCode: 404, body: #"{}"#, url: request.url!)
+            }
+        }
+        let repository = LibraryRepository(serverManager: manager, httpClient: httpClient)
+
+        let items = try await repository.loadLibrary()
+
+        #expect(items.count == 2)
+        #expect(items.contains { $0.title == "Andor" && $0.kind == .sonarr && $0.serverName == Fixtures.sonarrServer.name })
+        #expect(items.contains { $0.title == "Dune" && $0.kind == .radarr && $0.serverName == Fixtures.radarrServer.name })
+    }
 }

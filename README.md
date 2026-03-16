@@ -33,9 +33,18 @@ One unified interface to manage your entire media automation stack.
 ## Tech Stack
 
 - SwiftUI
-- MVVM
+- Observation
 - Async/Await networking
-- Modular architecture
+- Hybrid modular architecture
+
+## Project Status
+
+The repository now contains:
+
+- A generated Xcode app target driven by `xcodegen`
+- Local Swift packages for `PirratesCore`, `PirratesIntegrations`, and `PirratesDesignSystem`
+- Feature-first app source structure for `Dashboard`, `Discover`, `Library`, `Activity`, `Servers`, and `Settings`
+- GitHub Actions CI for package tests and app builds
 
 ## Project Structure
 
@@ -45,6 +54,14 @@ See `/docs/repository-structure.md` for details.
 
 See `/docs/technical-concept.md` for the recommended stack and target architecture.
 
+## Project Setup
+
+See `/docs/project-setup.md` for the generated scaffold, package split, and build workflow.
+
 ## License
 
-MIT
+GNU GPL v3 or later
+
+Copyright (C) 2026 Matthias Wallner-Géhri
+
+See `/LICENSE`.

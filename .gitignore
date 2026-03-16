@@ -1,0 +1,44 @@
+# Xcode
+#
+# Based on:
+# - https://github.com/github/gitignore/blob/main/Swift.gitignore
+# - https://github.com/github/gitignore/blob/main/Global/Xcode.gitignore
+
+## User settings
+xcuserdata/
+*.xcuserstate
+
+## Obj-C/Swift specific
+*.hmap
+
+## App packaging
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# Carthage
+Carthage/Build/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Xcode and build output
+DerivedData/
+
+# Local system files
+.DS_Store
+
+# Project-specific generated artifacts
+PirratesCaptainApp.xcodeproj/
+PirratesCaptain.xcodeproj/

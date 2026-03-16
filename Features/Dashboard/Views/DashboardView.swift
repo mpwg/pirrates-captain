@@ -26,12 +26,20 @@ struct DashboardView: View {
                         )
                     } else {
                         StatusCard(title: "Queue", subtitle: "\(snapshot.queueCount) active items")
-                        StatusCard(title: "Recent items", subtitle: "\(snapshot.recentItems.count) sources reporting")
-                        StatusCard(title: "Upcoming items", subtitle: "\(snapshot.upcomingItems.count) sources reporting")
+                        dashboardSection(
+                            title: "Recent releases",
+                            items: snapshot.recentItems,
+                            emptyState: "No recent activity reported in the last 7 days."
+                        )
+                        dashboardSection(
+                            title: "Upcoming",
+                            items: snapshot.upcomingItems,
+                            emptyState: "No scheduled releases in the next 14 days."
+                        )
 
                         ForEach(snapshot.health) { health in
                             StatusCard(
-                                title: health.service.displayName,
+                                title: "\(health.serverName) (\(health.service.displayName))",
                                 subtitle: health.message,
                                 tint: tint(for: health.status)
                             )
@@ -58,6 +66,27 @@ struct DashboardView: View {
             AppTheme.warning
         case .offline, .unauthorized:
             .red
+        }
+    }
+
+    @ViewBuilder
+    private func dashboardSection(title: String, items: [DashboardItem], emptyState: String) -> some View {
+        if items.isEmpty {
+            StatusCard(title: title, subtitle: emptyState)
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.white)
+
+                ForEach(items) { item in
+                    StatusCard(
+                        title: item.title,
+                        subtitle: "\(item.detail) • \(item.serverName) • \(item.date.formatted(date: .abbreviated, time: .omitted))",
+                        tint: item.service == .sonarr ? AppTheme.accent : AppTheme.warning
+                    )
+                }
+            }
         }
     }
 }

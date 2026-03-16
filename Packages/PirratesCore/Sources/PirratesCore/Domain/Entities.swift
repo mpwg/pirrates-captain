@@ -54,28 +54,55 @@ public struct ServiceHealth: Identifiable, Equatable, Sendable {
     }
 
     public let id: UUID
+    public let serverName: String
     public let service: ServiceKind
     public let status: Status
     public let message: String
 
-    public init(id: UUID = UUID(), service: ServiceKind, status: Status, message: String) {
+    public init(id: UUID = UUID(), serverName: String, service: ServiceKind, status: Status, message: String) {
         self.id = id
+        self.serverName = serverName
         self.service = service
         self.status = status
         self.message = message
     }
 }
 
+public struct DashboardItem: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let title: String
+    public let detail: String
+    public let service: ServiceKind
+    public let serverName: String
+    public let date: Date
+
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String,
+        service: ServiceKind,
+        serverName: String,
+        date: Date
+    ) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.service = service
+        self.serverName = serverName
+        self.date = date
+    }
+}
+
 public struct DashboardSnapshot: Equatable, Sendable {
     public let queueCount: Int
-    public let recentItems: [String]
-    public let upcomingItems: [String]
+    public let recentItems: [DashboardItem]
+    public let upcomingItems: [DashboardItem]
     public let health: [ServiceHealth]
 
     public init(
         queueCount: Int,
-        recentItems: [String],
-        upcomingItems: [String],
+        recentItems: [DashboardItem],
+        upcomingItems: [DashboardItem],
         health: [ServiceHealth]
     ) {
         self.queueCount = queueCount

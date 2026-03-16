@@ -11,7 +11,7 @@ struct ARRServiceClient: Sendable {
         profile: ServerProfile,
         apiKey: String,
         httpClient: HTTPClient = URLSession.shared,
-        decoder: JSONDecoder = JSONDecoder()
+        decoder: JSONDecoder = ARRServiceClient.makeDecoder()
     ) {
         self.profile = profile
         self.apiKey = apiKey
@@ -24,5 +24,36 @@ struct ARRServiceClient: Sendable {
         let (data, response) = try await httpClient.data(for: urlRequest)
         try ResponseValidator.validate(response)
         return try decoder.decode(T.self, from: data)
+    }
+
+    private static func makeDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let value = try container.decode(String.self)
+
+            if let date = Self.parseDate(value) {
+                return date
+            }
+
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Unsupported date format: \(value)"
+            )
+        }
+        return decoder
+    }
+
+    private static func parseDate(_ value: String) -> Date? {
+        let fractionalSecondsFormatter = ISO8601DateFormatter()
+        fractionalSecondsFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        if let date = fractionalSecondsFormatter.date(from: value) {
+            return date
+        }
+
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter.date(from: value)
     }
 }

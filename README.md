@@ -58,6 +58,10 @@ See `/docs/technical-concept.md` for the recommended stack and target architectu
 
 See `/docs/project-setup.md` for the generated scaffold, package split, and build workflow.
 
+## Development Plan
+
+See `/docs/development-plan.md` for the milestone-based execution plan and task tracking structure.
+
 ## License
 
 GPL3

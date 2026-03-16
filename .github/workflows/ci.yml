@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode.app
+        run: sudo xcode-select -switch /Applications/Xcode_26.3.app
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -32,4 +32,5 @@ jobs:
             -project PirratesCaptainApp.xcodeproj \
             -scheme PirratesCaptainApp \
             -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
             build

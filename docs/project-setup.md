@@ -30,6 +30,14 @@ This repository is scaffolded as a hybrid modular Apple app.
 2. Open `PirratesCaptain.xcworkspace`.
 3. Build the `PirratesCaptainApp` scheme.
 
+## Convenience script
+
+You can generate the project and open the workspace with:
+
+```bash
+./scripts/open-workspace.sh
+```
+
 ## Initial implementation scope
 
 - Direct client to arr services, no custom backend

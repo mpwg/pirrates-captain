@@ -1,11 +1,12 @@
 # Roadmap
 
+For the detailed internal execution plan, see `/docs/development-plan.md`.
+
 ## MVP
-- Dashboard
-- Add media via search
-- Radarr support
-- Sonarr support
-- Download queue
+- Release-ready Sonarr/Radarr support
+- Dashboard, Discover, Library, Activity, Servers, and Settings completed for MVP
+- Stable CI, CodeQL, and dependency automation
+- Release-quality tests and diagnostics
 
 ## Version 1.1
 - Lidarr support
@@ -15,4 +16,4 @@
 ## Version 2.0
 - Automation rules
 - Widgets
-- Multi-server management
+- Advanced offline and automation features

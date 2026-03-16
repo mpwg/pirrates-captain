@@ -33,3 +33,9 @@ Discover search and add flows also talk directly to Sonarr and Radarr for lookup
 - Dashboard health is tracked per configured server, not just per service type.
 - Sonarr and Radarr dashboard content is sourced from live `queue` and `calendar` endpoints.
 - Partial service failures degrade only the affected server cards; the dashboard still renders remaining data.
+
+## Activity data flow
+
+- Activity aggregates live Sonarr and Radarr `queue` and `history` endpoints per configured server.
+- Queue and history entries are merged into one descending timeline with server and service context preserved.
+- Partial service failures are tolerated; healthy servers still render activity even if another server is offline.

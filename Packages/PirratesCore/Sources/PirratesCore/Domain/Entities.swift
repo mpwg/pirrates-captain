@@ -257,16 +257,45 @@ public struct LibraryItem: Identifiable, Equatable, Sendable {
 }
 
 public struct ActivityItem: Identifiable, Equatable, Sendable {
+    public enum Category: String, Equatable, Sendable {
+        case queue
+        case history
+
+        public var displayName: String {
+            switch self {
+            case .queue: "Queue"
+            case .history: "History"
+            }
+        }
+    }
+
     public let id: UUID
     public let title: String
     public let detail: String
-    public let progress: Double
+    public let progress: Double?
+    public let service: ServiceKind
+    public let serverName: String
+    public let category: Category
+    public let date: Date
 
-    public init(id: UUID = UUID(), title: String, detail: String, progress: Double) {
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String,
+        progress: Double? = nil,
+        service: ServiceKind,
+        serverName: String,
+        category: Category,
+        date: Date
+    ) {
         self.id = id
         self.title = title
         self.detail = detail
         self.progress = progress
+        self.service = service
+        self.serverName = serverName
+        self.category = category
+        self.date = date
     }
 }
 

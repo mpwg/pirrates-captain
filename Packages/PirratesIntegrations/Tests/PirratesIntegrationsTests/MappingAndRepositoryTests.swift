@@ -268,4 +268,96 @@ struct MappingAndRepositoryTests {
         #expect(items.contains { $0.title == "Andor" && $0.kind == .sonarr && $0.serverName == Fixtures.sonarrServer.name })
         #expect(items.contains { $0.title == "Dune" && $0.kind == .radarr && $0.serverName == Fixtures.radarrServer.name })
     }
+
+    @Test
+    func loadsActivityAcrossSupportedServices() async throws {
+        let manager = InMemoryServerManager(
+            storedProfiles: [Fixtures.sonarrServer, Fixtures.radarrServer],
+            secrets: [
+                Fixtures.sonarrServer.id: "sonarr-key",
+                Fixtures.radarrServer.id: "radarr-key",
+            ]
+        )
+        let httpClient = MockHTTPClient { request in
+            switch request.url?.path {
+            case "/api/v3/queue":
+                if request.url?.host == "sonarr.local" {
+                    return makeJSONResponse(
+                        statusCode: 200,
+                        body: #"{"records":[{"id":1,"title":"Chapter 1","status":"downloading","trackedDownloadStatus":"downloading","size":1000,"sizeleft":250,"timeleft":"00:15:00","estimatedCompletionTime":"2026-03-21T10:15:00Z","series":{"title":"Andor"},"episode":{"title":"Chapter 1"}}]}"#,
+                        url: request.url!
+                    )
+                }
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"{"records":[{"id":2,"title":"Dune","status":"queued","trackedDownloadState":"downloading","size":2000,"sizeleft":500,"timeleft":"00:30:00","estimatedCompletionTime":"2026-03-21T11:00:00Z","movie":{"title":"Dune"}}]}"#,
+                    url: request.url!
+                )
+            case "/api/v3/history":
+                if request.url?.host == "sonarr.local" {
+                    return makeJSONResponse(
+                        statusCode: 200,
+                        body: #"{"records":[{"id":11,"sourceTitle":"Chapter 1","eventType":"downloadFolderImported","date":"2026-03-20T12:00:00Z","series":{"title":"Andor"},"episode":{"title":"Chapter 1"}}]}"#,
+                        url: request.url!
+                    )
+                }
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"{"records":[{"id":12,"sourceTitle":"Dune","eventType":"movieFileDeleted","date":"2026-03-20T09:00:00Z","movie":{"title":"Dune"}}]}"#,
+                    url: request.url!
+                )
+            default:
+                Issue.record("Unexpected path \(request.url?.path ?? "nil")")
+                return makeJSONResponse(statusCode: 404, body: #"{}"#, url: request.url!)
+            }
+        }
+        let repository = ActivityRepository(serverManager: manager, httpClient: httpClient)
+
+        let items = try await repository.loadActivity()
+
+        #expect(items.count == 4)
+        #expect(items.first?.title == "Dune")
+        #expect(items.contains { $0.title == "Andor" && $0.category == .queue && $0.service == .sonarr && $0.progress == 0.75 })
+        #expect(items.contains { $0.title == "Dune" && $0.category == .history && $0.service == .radarr && $0.progress == nil })
+    }
+
+    @Test
+    func activityToleratesPartialServiceFailures() async throws {
+        let manager = InMemoryServerManager(
+            storedProfiles: [Fixtures.sonarrServer, Fixtures.radarrServer],
+            secrets: [
+                Fixtures.sonarrServer.id: "sonarr-key",
+                Fixtures.radarrServer.id: "radarr-key",
+            ]
+        )
+        let httpClient = MockHTTPClient { request in
+            if request.url?.host == "radarr.local" {
+                throw AppError.unreachableServer
+            }
+
+            switch request.url?.path {
+            case "/api/v3/queue":
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"{"records":[{"id":1,"title":"Chapter 1","status":"downloading","size":1000,"sizeleft":500,"estimatedCompletionTime":"2026-03-21T10:15:00Z","series":{"title":"Andor"}}]}"#,
+                    url: request.url!
+                )
+            case "/api/v3/history":
+                return makeJSONResponse(
+                    statusCode: 200,
+                    body: #"{"records":[{"id":11,"sourceTitle":"Chapter 1","eventType":"grabbed","date":"2026-03-20T12:00:00Z","series":{"title":"Andor"}}]}"#,
+                    url: request.url!
+                )
+            default:
+                Issue.record("Unexpected path \(request.url?.path ?? "nil")")
+                return makeJSONResponse(statusCode: 404, body: #"{}"#, url: request.url!)
+            }
+        }
+        let repository = ActivityRepository(serverManager: manager, httpClient: httpClient)
+
+        let items = try await repository.loadActivity()
+
+        #expect(items.count == 2)
+        #expect(items.allSatisfy { $0.service == .sonarr })
+    }
 }

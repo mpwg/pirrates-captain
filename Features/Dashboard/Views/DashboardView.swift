@@ -19,14 +19,23 @@ struct DashboardView: View {
                 case let .failed(error):
                     StatusCard(title: "Unable to load dashboard", subtitle: error.localizedDescription, tint: AppTheme.warning)
                 case let .loaded(snapshot):
-                    StatusCard(title: "Queue", subtitle: "\(snapshot.queueCount) active items")
-
-                    ForEach(snapshot.health) { health in
+                    if snapshot.health.isEmpty {
                         StatusCard(
-                            title: health.service.displayName,
-                            subtitle: health.message,
-                            tint: tint(for: health.status)
+                            title: "No servers connected",
+                            subtitle: "Open the Servers tab to configure Sonarr, Radarr, Lidarr, Prowlarr, or SABnzbd."
                         )
+                    } else {
+                        StatusCard(title: "Queue", subtitle: "\(snapshot.queueCount) active items")
+                        StatusCard(title: "Recent items", subtitle: "\(snapshot.recentItems.count) sources reporting")
+                        StatusCard(title: "Upcoming items", subtitle: "\(snapshot.upcomingItems.count) sources reporting")
+
+                        ForEach(snapshot.health) { health in
+                            StatusCard(
+                                title: health.service.displayName,
+                                subtitle: health.message,
+                                tint: tint(for: health.status)
+                            )
+                        }
                     }
                 }
             }

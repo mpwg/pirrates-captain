@@ -7,6 +7,9 @@ import PirratesCore
 final class ServersViewModel {
     var servers: [ServerProfile] = []
     var errorMessage: String?
+    var editorErrorMessage: String?
+    var isPresentingEditor = false
+    var draft = ServerDraft()
 
     private let serverManager: any ServerManaging
 
@@ -24,20 +27,40 @@ final class ServersViewModel {
         }
     }
 
-    func addSampleServer() {
-        let nextKind = ServiceKind.allCases[servers.count % ServiceKind.allCases.count]
-        let profile = ServerProfile(
-            name: "\(nextKind.displayName) Server",
-            kind: nextKind,
-            baseURL: URL(string: "https://\(nextKind.rawValue).local")!
-        )
+    func presentAddServer() {
+        draft = ServerDraft()
+        editorErrorMessage = nil
+        isPresentingEditor = true
+    }
 
+    func presentEditServer(_ server: ServerProfile) {
         do {
-            try serverManager.saveServer(profile, apiKey: nil)
-            reload()
+            draft = ServerDraft(profile: server, apiKey: try serverManager.apiKey(for: server.id))
+            editorErrorMessage = nil
+            isPresentingEditor = true
         } catch {
             errorMessage = ErrorMapper.map(error).localizedDescription
         }
+    }
+
+    func saveDraft() -> Bool {
+        do {
+            let profile = try draft.makeProfile()
+            let apiKey = draft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            try serverManager.saveServer(profile, apiKey: apiKey.isEmpty ? nil : apiKey)
+            cancelEditing()
+            reload()
+            return true
+        } catch {
+            editorErrorMessage = ErrorMapper.map(error).localizedDescription
+            return false
+        }
+    }
+
+    func cancelEditing() {
+        draft = ServerDraft()
+        editorErrorMessage = nil
+        isPresentingEditor = false
     }
 
     func deleteServers(at offsets: IndexSet) {

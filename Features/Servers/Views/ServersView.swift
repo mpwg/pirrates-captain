@@ -11,8 +11,8 @@ struct ServersView: View {
                     .font(.largeTitle.bold())
                     .foregroundStyle(.white)
                 Spacer()
-                Button("Add Sample") {
-                    viewModel.addSampleServer()
+                Button("Add Server") {
+                    viewModel.presentAddServer()
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -21,23 +21,53 @@ struct ServersView: View {
                 StatusCard(title: "Server storage error", subtitle: errorMessage, tint: AppTheme.warning)
             }
 
-            List {
-                ForEach(viewModel.servers) { server in
-                    VStack(alignment: .leading) {
-                        Text(server.name)
-                        Text(server.baseURL.absoluteString)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+            if viewModel.servers.isEmpty {
+                StatusCard(
+                    title: "No servers configured",
+                    subtitle: "Add your first Sonarr, Radarr, Lidarr, Prowlarr, or SABnzbd server to begin."
+                )
+            } else {
+                List {
+                    ForEach(viewModel.servers) { server in
+                        Button {
+                            viewModel.presentEditServer(server)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(server.name)
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text(server.kind.displayName)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Text(server.baseURL.absoluteString)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                if !server.isEnabled {
+                                    Text("Disabled")
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
                     }
+                    .onDelete(perform: viewModel.deleteServers)
                 }
-                .onDelete(perform: viewModel.deleteServers)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
-            .scrollContentBackground(.hidden)
-            .background(Color.clear)
 
             Spacer()
         }
         .padding(20)
         .background(AppTheme.background.ignoresSafeArea())
+        .sheet(isPresented: $viewModel.isPresentingEditor) {
+            ServerEditorView(viewModel: viewModel)
+        }
     }
 }

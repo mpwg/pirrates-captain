@@ -101,6 +101,10 @@ public struct SonarrClient: Sendable {
 
         _ = try await client.send(APIRequest(path: "/api/v3/series", method: "POST", body: try JSONEncoder().encode(payload)), as: SonarrSeriesDTO.self)
     }
+
+    func library() async throws -> [SonarrSeriesDTO] {
+        try await client.send(APIRequest(path: "/api/v3/series"), as: [SonarrSeriesDTO].self)
+    }
 }
 
 private struct SonarrAddSeriesPayload: Encodable {

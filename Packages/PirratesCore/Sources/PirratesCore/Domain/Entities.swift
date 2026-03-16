@@ -233,12 +233,26 @@ public struct LibraryItem: Identifiable, Equatable, Sendable {
     public let title: String
     public let detail: String
     public let kind: ServiceKind
+    public let serverName: String
+    public let remoteID: String
+    public let overview: String
 
-    public init(id: UUID = UUID(), title: String, detail: String, kind: ServiceKind) {
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String,
+        kind: ServiceKind,
+        serverName: String,
+        remoteID: String,
+        overview: String
+    ) {
         self.id = id
         self.title = title
         self.detail = detail
         self.kind = kind
+        self.serverName = serverName
+        self.remoteID = remoteID
+        self.overview = overview
     }
 }
 

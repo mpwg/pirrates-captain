@@ -445,20 +445,59 @@ public final class LibraryRepository: LibraryProviding {
 @MainActor
 public final class ActivityRepository: ActivityProviding {
     private let serverManager: any ServerManaging
+    private let httpClient: HTTPClient
 
-    public init(serverManager: any ServerManaging) {
+    public init(serverManager: any ServerManaging, httpClient: HTTPClient = URLSession.shared) {
         self.serverManager = serverManager
+        self.httpClient = httpClient
     }
 
     public func loadActivity() async throws -> [ActivityItem] {
-        try serverManager.profiles()
-            .filter(\.isEnabled)
-            .map {
-                ActivityItem(
-                    title: "\($0.kind.displayName) download",
-                    detail: "Monitoring \($0.name)",
-                    progress: 0.65
-                )
+        let profiles = try serverManager.profiles().filter(\.isEnabled)
+        var items: [ActivityItem] = []
+        var lastError: Error?
+        var attemptedServers = 0
+
+        for profile in profiles {
+            if profile.kind == .sonarr || profile.kind == .radarr {
+                attemptedServers += 1
             }
+
+            do {
+                let apiKey = try serverManager.apiKey(for: profile.id)
+                items += try await loadActivity(for: profile, apiKey: apiKey)
+            } catch {
+                lastError = error
+            }
+        }
+
+        if items.isEmpty, attemptedServers > 0, let lastError {
+            throw lastError
+        }
+
+        return items.sorted(using: SortDescriptor(\ActivityItem.date, order: .reverse))
+    }
+
+    private func loadActivity(for profile: ServerProfile, apiKey: String?) async throws -> [ActivityItem] {
+        switch profile.kind {
+        case .sonarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Sonarr.")
+            }
+            let client = SonarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+            let queueItems = try await client.queue().compactMap { SonarrActivityMapper.mapQueue($0, profile: profile) }
+            let historyItems = try await client.history().compactMap { SonarrActivityMapper.mapHistory($0, profile: profile) }
+            return Array((queueItems + historyItems).sorted(using: SortDescriptor(\.date, order: .reverse)).prefix(12))
+        case .radarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Radarr.")
+            }
+            let client = RadarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+            let queueItems = try await client.queue().compactMap { RadarrActivityMapper.mapQueue($0, profile: profile) }
+            let historyItems = try await client.history().compactMap { RadarrActivityMapper.mapHistory($0, profile: profile) }
+            return Array((queueItems + historyItems).sorted(using: SortDescriptor(\.date, order: .reverse)).prefix(12))
+        case .lidarr, .prowlarr, .sabnzbd:
+            return []
+        }
     }
 }

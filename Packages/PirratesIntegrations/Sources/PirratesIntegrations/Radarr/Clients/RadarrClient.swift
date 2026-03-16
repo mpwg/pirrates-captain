@@ -33,6 +33,38 @@ public struct RadarrClient: Sendable {
         return response.totalRecords ?? response.records?.count ?? 0
     }
 
+    func queue(pageSize: Int = 10) async throws -> [RadarrQueueRecordDTO] {
+        let response = try await client.send(
+            APIRequest(
+                path: "/api/v3/queue",
+                queryItems: [
+                    URLQueryItem(name: "page", value: "1"),
+                    URLQueryItem(name: "pageSize", value: String(pageSize)),
+                ]
+            ),
+            as: RadarrQueuePageDTO.self
+        )
+
+        return response.records ?? []
+    }
+
+    func history(pageSize: Int = 10) async throws -> [RadarrHistoryRecordDTO] {
+        let response = try await client.send(
+            APIRequest(
+                path: "/api/v3/history",
+                queryItems: [
+                    URLQueryItem(name: "page", value: "1"),
+                    URLQueryItem(name: "pageSize", value: String(pageSize)),
+                    URLQueryItem(name: "sortKey", value: "date"),
+                    URLQueryItem(name: "sortDirection", value: "descending"),
+                ]
+            ),
+            as: RadarrHistoryPageDTO.self
+        )
+
+        return response.records ?? []
+    }
+
     public func search(term: String) async throws -> [SearchResult] {
         let results = try await client.send(
             APIRequest(

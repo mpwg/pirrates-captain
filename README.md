@@ -60,8 +60,4 @@ See `/docs/project-setup.md` for the generated scaffold, package split, and buil
 
 ## License
 
-GNU GPL v3 or later
-
-Copyright (C) 2026 Matthias Wallner-Géhri
-
-See `/LICENSE`.
+GPL3

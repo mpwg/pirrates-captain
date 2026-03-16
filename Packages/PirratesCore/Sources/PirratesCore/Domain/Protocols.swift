@@ -33,6 +33,10 @@ public protocol HealthChecking {
     func checkHealth(for profiles: [ServerProfile]) async -> [ServiceHealth]
 }
 
+public protocol ServerConnectionValidating: Sendable {
+    func validateServer(_ profile: ServerProfile, apiKey: String?) async throws
+}
+
 public protocol SecretStoring {
     func saveSecret(_ value: String, for key: String) throws
     func readSecret(for key: String) throws -> String?

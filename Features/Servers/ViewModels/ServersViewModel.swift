@@ -9,12 +9,15 @@ final class ServersViewModel {
     var errorMessage: String?
     var editorErrorMessage: String?
     var isPresentingEditor = false
+    var isSaving = false
     var draft = ServerDraft()
 
     private let serverManager: any ServerManaging
+    private let serverValidator: any ServerConnectionValidating
 
-    init(serverManager: any ServerManaging) {
+    init(serverManager: any ServerManaging, serverValidator: any ServerConnectionValidating) {
         self.serverManager = serverManager
+        self.serverValidator = serverValidator
         reload()
     }
 
@@ -43,16 +46,20 @@ final class ServersViewModel {
         }
     }
 
-    func saveDraft() -> Bool {
+    func saveDraft() async -> Bool {
         do {
+            isSaving = true
             let profile = try draft.makeProfile()
             let apiKey = draft.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            try await serverValidator.validateServer(profile, apiKey: apiKey.isEmpty ? nil : apiKey)
             try serverManager.saveServer(profile, apiKey: apiKey.isEmpty ? nil : apiKey)
             cancelEditing()
             reload()
+            isSaving = false
             return true
         } catch {
             editorErrorMessage = ErrorMapper.map(error).localizedDescription
+            isSaving = false
             return false
         }
     }
@@ -60,6 +67,7 @@ final class ServersViewModel {
     func cancelEditing() {
         draft = ServerDraft()
         editorErrorMessage = nil
+        isSaving = false
         isPresentingEditor = false
     }
 

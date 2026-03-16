@@ -14,6 +14,7 @@ final class CompositionRoot {
     let libraryProvider: any LibraryProviding
     let activityProvider: any ActivityProviding
     let healthChecker: any HealthChecking
+    let serverValidator: any ServerConnectionValidating
 
     private init(
         modelContainer: ModelContainer,
@@ -22,7 +23,8 @@ final class CompositionRoot {
         discoverProvider: any DiscoverProviding,
         libraryProvider: any LibraryProviding,
         activityProvider: any ActivityProviding,
-        healthChecker: any HealthChecking
+        healthChecker: any HealthChecking,
+        serverValidator: any ServerConnectionValidating
     ) {
         self.modelContainer = modelContainer
         self.serverManager = serverManager
@@ -31,6 +33,7 @@ final class CompositionRoot {
         self.libraryProvider = libraryProvider
         self.activityProvider = activityProvider
         self.healthChecker = healthChecker
+        self.serverValidator = serverValidator
     }
 
     static func bootstrap() -> CompositionRoot {
@@ -47,7 +50,8 @@ final class CompositionRoot {
             modelContext: modelContainer.mainContext,
             secretStore: secretStore
         )
-        let healthChecker = ServiceHealthChecker()
+        let serverValidator = ArrServerConnectionValidator()
+        let healthChecker = ServiceHealthChecker(serverManager: serverManager, validator: serverValidator)
 
         return CompositionRoot(
             modelContainer: modelContainer,
@@ -56,7 +60,8 @@ final class CompositionRoot {
             discoverProvider: DiscoverRepository(serverManager: serverManager),
             libraryProvider: LibraryRepository(serverManager: serverManager),
             activityProvider: ActivityRepository(serverManager: serverManager),
-            healthChecker: healthChecker
+            healthChecker: healthChecker,
+            serverValidator: serverValidator
         )
     }
 }

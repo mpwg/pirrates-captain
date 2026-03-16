@@ -51,10 +51,13 @@ struct ServerEditorView: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        if viewModel.saveDraft() {
-                            dismiss()
+                        Task {
+                            if await viewModel.saveDraft() {
+                                dismiss()
+                            }
                         }
                     }
+                    .disabled(viewModel.isSaving)
                 }
             }
         }

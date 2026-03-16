@@ -18,7 +18,10 @@ struct RootShellView: View {
         _discoverViewModel = State(initialValue: DiscoverViewModel(discoverProvider: root.discoverProvider))
         _libraryViewModel = State(initialValue: LibraryViewModel(libraryProvider: root.libraryProvider))
         _activityViewModel = State(initialValue: ActivityViewModel(activityProvider: root.activityProvider))
-        _serversViewModel = State(initialValue: ServersViewModel(serverManager: root.serverManager))
+        _serversViewModel = State(initialValue: ServersViewModel(
+            serverManager: root.serverManager,
+            serverValidator: root.serverValidator
+        ))
     }
 
     var body: some View {

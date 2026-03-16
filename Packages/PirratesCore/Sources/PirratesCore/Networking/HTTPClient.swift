@@ -4,11 +4,13 @@ public struct APIRequest: Sendable {
     public let path: String
     public let method: String
     public let queryItems: [URLQueryItem]
+    public let body: Data?
 
-    public init(path: String, method: String = "GET", queryItems: [URLQueryItem] = []) {
+    public init(path: String, method: String = "GET", queryItems: [URLQueryItem] = [], body: Data? = nil) {
         self.path = path
         self.method = method
         self.queryItems = queryItems
+        self.body = body
     }
 }
 
@@ -37,8 +39,12 @@ public enum RequestBuilder {
 
         var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
+        urlRequest.httpBody = request.body
         if let apiKey, !apiKey.isEmpty {
             urlRequest.addValue(apiKey, forHTTPHeaderField: "X-Api-Key")
+        }
+        if request.body != nil {
+            urlRequest.addValue("application/json", forHTTPHeaderField: "Content-Type")
         }
         return urlRequest
     }

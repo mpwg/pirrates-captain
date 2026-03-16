@@ -26,6 +26,7 @@ The project uses a hybrid modular SwiftUI architecture.
 ## Networking
 
 The app communicates directly with configured arr services using async/await and service-specific clients.
+Discover search and add flows also talk directly to Sonarr and Radarr for lookup, root-folder loading, quality-profile loading, and add requests.
 
 ## Dashboard data flow
 

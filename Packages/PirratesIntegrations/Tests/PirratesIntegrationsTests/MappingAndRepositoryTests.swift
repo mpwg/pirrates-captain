@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 import PirratesCore
 @testable import PirratesIntegrations
@@ -6,12 +7,13 @@ import PirratesCore
 struct MappingAndRepositoryTests {
     @Test
     func mapsSonarrSeriesIntoSearchResult() {
-        let dto = SonarrSeriesDTO(title: "Andor", year: 2022)
-        let result = SonarrSeriesMapper.map(dto)
+        let dto = SonarrSeriesDTO(title: "Andor", year: 2022, overview: "Rebellion", tvdbId: 123)
+        let result = SonarrSeriesMapper.map(dto, profile: Fixtures.sonarrServer)
 
-        #expect(result.title == "Andor")
-        #expect(result.detail == "2022")
-        #expect(result.kind == .sonarr)
+        #expect(result?.title == "Andor")
+        #expect(result?.detail == "2022")
+        #expect(result?.kind == .sonarr)
+        #expect(result?.serverID == Fixtures.sonarrServer.id)
     }
 
     @Test
@@ -89,9 +91,9 @@ struct MappingAndRepositoryTests {
         let httpClient = MockHTTPClient { request in
             switch request.url?.path {
             case "/api/v3/series/lookup":
-                return makeJSONResponse(statusCode: 200, body: #"[{"title":"Andor","year":2022}]"#, url: request.url!)
+                return makeJSONResponse(statusCode: 200, body: #"[{"title":"Andor","year":2022,"overview":"Rebellion","tvdbId":100}]"#, url: request.url!)
             case "/api/v3/movie/lookup":
-                return makeJSONResponse(statusCode: 200, body: #"[{"title":"Dune","year":2021}]"#, url: request.url!)
+                return makeJSONResponse(statusCode: 200, body: #"[{"title":"Dune","year":2021,"overview":"Spice","tmdbId":200}]"#, url: request.url!)
             default:
                 Issue.record("Unexpected path \(request.url?.path ?? "nil")")
                 return makeJSONResponse(statusCode: 404, body: #"{}"#, url: request.url!)
@@ -101,8 +103,8 @@ struct MappingAndRepositoryTests {
         let results = try await repository.search(query: "test")
 
         #expect(results.count == 2)
-        #expect(results.contains { $0.title == "Andor" && $0.kind == .sonarr })
-        #expect(results.contains { $0.title == "Dune" && $0.kind == .radarr })
+        #expect(results.contains { $0.title == "Andor" && $0.kind == .sonarr && $0.serverName == Fixtures.sonarrServer.name })
+        #expect(results.contains { $0.title == "Dune" && $0.kind == .radarr && $0.serverName == Fixtures.radarrServer.name })
     }
 
     @Test
@@ -149,5 +151,84 @@ struct MappingAndRepositoryTests {
         #expect(snapshot.health.contains { $0.serverName == Fixtures.radarrServer.name && $0.status == .offline })
         #expect(snapshot.recentItems.count == 1)
         #expect(snapshot.upcomingItems.count == 1)
+    }
+
+    @Test
+    func preparesSonarrAddContext() async throws {
+        let manager = InMemoryServerManager(
+            storedProfiles: [Fixtures.sonarrServer],
+            secrets: [Fixtures.sonarrServer.id: "sonarr-key"]
+        )
+        let result = SearchResult(
+            title: "Andor",
+            detail: "2022",
+            overview: "Rebellion",
+            kind: .sonarr,
+            serverID: Fixtures.sonarrServer.id,
+            serverName: Fixtures.sonarrServer.name,
+            addTarget: .sonarr(tvdbID: 100)
+        )
+        let httpClient = MockHTTPClient { request in
+            switch request.url?.path {
+            case "/api/v3/rootfolder":
+                return makeJSONResponse(statusCode: 200, body: #"[{"id":1,"path":"/tv","accessible":true}]"#, url: request.url!)
+            case "/api/v3/qualityprofile":
+                return makeJSONResponse(statusCode: 200, body: #"[{"id":7,"name":"HD-1080p"}]"#, url: request.url!)
+            default:
+                Issue.record("Unexpected path \(request.url?.path ?? "nil")")
+                return makeJSONResponse(statusCode: 404, body: #"{}"#, url: request.url!)
+            }
+        }
+        let repository = DiscoverRepository(serverManager: manager, httpClient: httpClient)
+
+        let context = try await repository.prepareAdd(for: result)
+
+        #expect(context.service == .sonarr)
+        #expect(context.rootFolders.first?.id == "/tv")
+        #expect(context.qualityProfiles.first?.id == "7")
+        #expect(context.defaultConfiguration.monitor == "all")
+    }
+
+    @Test
+    func addsMovieToRadarr() async throws {
+        let manager = InMemoryServerManager(
+            storedProfiles: [Fixtures.radarrServer],
+            secrets: [Fixtures.radarrServer.id: "radarr-key"]
+        )
+        let result = SearchResult(
+            title: "Dune",
+            detail: "2021",
+            overview: "Spice",
+            kind: .radarr,
+            serverID: Fixtures.radarrServer.id,
+            serverName: Fixtures.radarrServer.name,
+            addTarget: .radarr(tmdbID: 200)
+        )
+        let httpClient = MockHTTPClient { request in
+            #expect(request.url?.path == "/api/v3/movie")
+            #expect(request.httpMethod == "POST")
+            let body = try #require(request.httpBody)
+            let json = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            #expect(json?["tmdbId"] as? Int == 200)
+            #expect(json?["rootFolderPath"] as? String == "/movies")
+            #expect(json?["monitor"] as? String == "movieOnly")
+            return makeJSONResponse(statusCode: 201, body: #"{"title":"Dune","year":2021,"overview":"Spice","tmdbId":200}"#, url: request.url!)
+        }
+        let repository = DiscoverRepository(serverManager: manager, httpClient: httpClient)
+
+        try await repository.add(
+            result: result,
+            configuration: DiscoverAddConfiguration(
+                rootFolderPath: "/movies",
+                qualityProfileID: 5,
+                monitor: "movieOnly",
+                seriesType: "standard",
+                minimumAvailability: "released",
+                seasonFolder: false,
+                searchForMissingEpisodes: false,
+                searchForCutoffUnmetEpisodes: false,
+                searchForMovie: true
+            )
+        )
     }
 }

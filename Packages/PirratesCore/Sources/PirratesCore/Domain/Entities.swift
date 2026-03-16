@@ -116,13 +116,115 @@ public struct SearchResult: Identifiable, Equatable, Sendable {
     public let id: UUID
     public let title: String
     public let detail: String
+    public let overview: String
     public let kind: ServiceKind
+    public let serverID: UUID
+    public let serverName: String
+    public let addTarget: SearchResultAddTarget
 
-    public init(id: UUID = UUID(), title: String, detail: String, kind: ServiceKind) {
+    public init(
+        id: UUID = UUID(),
+        title: String,
+        detail: String,
+        overview: String,
+        kind: ServiceKind,
+        serverID: UUID,
+        serverName: String,
+        addTarget: SearchResultAddTarget
+    ) {
         self.id = id
         self.title = title
         self.detail = detail
+        self.overview = overview
         self.kind = kind
+        self.serverID = serverID
+        self.serverName = serverName
+        self.addTarget = addTarget
+    }
+}
+
+public enum SearchResultAddTarget: Equatable, Sendable {
+    case sonarr(tvdbID: Int)
+    case radarr(tmdbID: Int)
+}
+
+public struct DiscoverOption: Identifiable, Equatable, Sendable {
+    public let id: String
+    public let title: String
+    public let subtitle: String?
+
+    public init(id: String, title: String, subtitle: String? = nil) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+    }
+}
+
+public struct DiscoverAddConfiguration: Equatable, Sendable {
+    public var rootFolderPath: String
+    public var qualityProfileID: Int
+    public var monitor: String
+    public var seriesType: String
+    public var minimumAvailability: String
+    public var seasonFolder: Bool
+    public var searchForMissingEpisodes: Bool
+    public var searchForCutoffUnmetEpisodes: Bool
+    public var searchForMovie: Bool
+
+    public init(
+        rootFolderPath: String,
+        qualityProfileID: Int,
+        monitor: String,
+        seriesType: String,
+        minimumAvailability: String,
+        seasonFolder: Bool,
+        searchForMissingEpisodes: Bool,
+        searchForCutoffUnmetEpisodes: Bool,
+        searchForMovie: Bool
+    ) {
+        self.rootFolderPath = rootFolderPath
+        self.qualityProfileID = qualityProfileID
+        self.monitor = monitor
+        self.seriesType = seriesType
+        self.minimumAvailability = minimumAvailability
+        self.seasonFolder = seasonFolder
+        self.searchForMissingEpisodes = searchForMissingEpisodes
+        self.searchForCutoffUnmetEpisodes = searchForCutoffUnmetEpisodes
+        self.searchForMovie = searchForMovie
+    }
+}
+
+public struct DiscoverAddContext: Equatable, Sendable {
+    public let title: String
+    public let service: ServiceKind
+    public let serverName: String
+    public let qualityProfiles: [DiscoverOption]
+    public let rootFolders: [DiscoverOption]
+    public let monitorOptions: [DiscoverOption]
+    public let seriesTypeOptions: [DiscoverOption]
+    public let minimumAvailabilityOptions: [DiscoverOption]
+    public let defaultConfiguration: DiscoverAddConfiguration
+
+    public init(
+        title: String,
+        service: ServiceKind,
+        serverName: String,
+        qualityProfiles: [DiscoverOption],
+        rootFolders: [DiscoverOption],
+        monitorOptions: [DiscoverOption],
+        seriesTypeOptions: [DiscoverOption],
+        minimumAvailabilityOptions: [DiscoverOption],
+        defaultConfiguration: DiscoverAddConfiguration
+    ) {
+        self.title = title
+        self.service = service
+        self.serverName = serverName
+        self.qualityProfiles = qualityProfiles
+        self.rootFolders = rootFolders
+        self.monitorOptions = monitorOptions
+        self.seriesTypeOptions = seriesTypeOptions
+        self.minimumAvailabilityOptions = minimumAvailabilityOptions
+        self.defaultConfiguration = defaultConfiguration
     }
 }
 

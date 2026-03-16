@@ -42,7 +42,7 @@ public struct RadarrClient: Sendable {
             as: [RadarrMovieDTO].self
         )
 
-        return results.map(RadarrMovieMapper.map)
+        return results.compactMap { RadarrMovieMapper.map($0, profile: profile) }
     }
 
     public func calendar(start: Date, end: Date) async throws -> [RadarrCalendarDTO] {
@@ -66,4 +66,46 @@ public struct RadarrClient: Sendable {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
     }
+
+    func qualityProfiles() async throws -> [QualityProfileDTO] {
+        try await client.send(APIRequest(path: "/api/v3/qualityprofile"), as: [QualityProfileDTO].self)
+    }
+
+    func rootFolders() async throws -> [RootFolderDTO] {
+        try await client.send(APIRequest(path: "/api/v3/rootfolder"), as: [RootFolderDTO].self)
+    }
+
+    public func addMovie(
+        tmdbID: Int,
+        rootFolderPath: String,
+        monitor: String,
+        qualityProfileID: Int,
+        minimumAvailability: String,
+        searchForMovie: Bool
+    ) async throws {
+        let payload = RadarrAddMoviePayload(
+            tmdbId: tmdbID,
+            rootFolderPath: rootFolderPath,
+            monitor: monitor,
+            qualityProfileId: qualityProfileID,
+            minimumAvailability: minimumAvailability,
+            addOptions: .init(searchForMovie: searchForMovie, addMethod: "manual")
+        )
+
+        _ = try await client.send(APIRequest(path: "/api/v3/movie", method: "POST", body: try JSONEncoder().encode(payload)), as: RadarrMovieDTO.self)
+    }
+}
+
+private struct RadarrAddMoviePayload: Encodable {
+    let tmdbId: Int
+    let rootFolderPath: String
+    let monitor: String
+    let qualityProfileId: Int
+    let minimumAvailability: String
+    let addOptions: RadarrAddMovieOptionsPayload
+}
+
+private struct RadarrAddMovieOptionsPayload: Encodable {
+    let searchForMovie: Bool
+    let addMethod: String
 }

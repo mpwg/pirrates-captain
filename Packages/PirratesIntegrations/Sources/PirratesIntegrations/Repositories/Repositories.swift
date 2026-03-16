@@ -219,6 +219,149 @@ public final class DiscoverRepository: DiscoverProviding {
             return []
         }
     }
+
+    public func prepareAdd(for result: SearchResult) async throws -> DiscoverAddContext {
+        let profile = try serverManager.profiles().first { $0.id == result.serverID }
+
+        guard let profile else {
+            throw AppError.validationFailed("The selected server is no longer configured.")
+        }
+
+        let apiKey = try serverManager.apiKey(for: profile.id)
+
+        switch result.addTarget {
+        case .sonarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Sonarr.")
+            }
+            let client = SonarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+            let rootFolders = try await client.rootFolders()
+                .filter(\.accessible)
+                .map { DiscoverOption(id: $0.path, title: $0.path) }
+            let qualityProfiles = try await client.qualityProfiles()
+                .map { DiscoverOption(id: String($0.id), title: $0.name) }
+
+            return DiscoverAddContext(
+                title: result.title,
+                service: .sonarr,
+                serverName: profile.name,
+                qualityProfiles: qualityProfiles,
+                rootFolders: rootFolders,
+                monitorOptions: Self.sonarrMonitorOptions,
+                seriesTypeOptions: Self.sonarrSeriesTypeOptions,
+                minimumAvailabilityOptions: [],
+                defaultConfiguration: DiscoverAddConfiguration(
+                    rootFolderPath: rootFolders.first?.id ?? "",
+                    qualityProfileID: Int(qualityProfiles.first?.id ?? "") ?? 0,
+                    monitor: Self.sonarrMonitorOptions.first?.id ?? "all",
+                    seriesType: Self.sonarrSeriesTypeOptions.first?.id ?? "standard",
+                    minimumAvailability: "released",
+                    seasonFolder: true,
+                    searchForMissingEpisodes: true,
+                    searchForCutoffUnmetEpisodes: false,
+                    searchForMovie: false
+                )
+            )
+        case .radarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Radarr.")
+            }
+            let client = RadarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+            let rootFolders = try await client.rootFolders()
+                .filter(\.accessible)
+                .map { DiscoverOption(id: $0.path, title: $0.path) }
+            let qualityProfiles = try await client.qualityProfiles()
+                .map { DiscoverOption(id: String($0.id), title: $0.name) }
+
+            return DiscoverAddContext(
+                title: result.title,
+                service: .radarr,
+                serverName: profile.name,
+                qualityProfiles: qualityProfiles,
+                rootFolders: rootFolders,
+                monitorOptions: Self.radarrMonitorOptions,
+                seriesTypeOptions: [],
+                minimumAvailabilityOptions: Self.radarrMinimumAvailabilityOptions,
+                defaultConfiguration: DiscoverAddConfiguration(
+                    rootFolderPath: rootFolders.first?.id ?? "",
+                    qualityProfileID: Int(qualityProfiles.first?.id ?? "") ?? 0,
+                    monitor: Self.radarrMonitorOptions.first?.id ?? "movieOnly",
+                    seriesType: "standard",
+                    minimumAvailability: Self.radarrMinimumAvailabilityOptions.last?.id ?? "released",
+                    seasonFolder: false,
+                    searchForMissingEpisodes: false,
+                    searchForCutoffUnmetEpisodes: false,
+                    searchForMovie: true
+                )
+            )
+        }
+    }
+
+    public func add(result: SearchResult, configuration: DiscoverAddConfiguration) async throws {
+        let profile = try serverManager.profiles().first { $0.id == result.serverID }
+
+        guard let profile else {
+            throw AppError.validationFailed("The selected server is no longer configured.")
+        }
+
+        let apiKey = try serverManager.apiKey(for: profile.id)
+
+        switch result.addTarget {
+        case let .sonarr(tvdbID):
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Sonarr.")
+            }
+            try await SonarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient).addSeries(
+                tvdbID: tvdbID,
+                rootFolderPath: configuration.rootFolderPath,
+                monitor: configuration.monitor,
+                qualityProfileID: configuration.qualityProfileID,
+                seriesType: configuration.seriesType,
+                seasonFolder: configuration.seasonFolder,
+                searchForMissingEpisodes: configuration.searchForMissingEpisodes,
+                searchForCutoffUnmetEpisodes: configuration.searchForCutoffUnmetEpisodes
+            )
+        case let .radarr(tmdbID):
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Radarr.")
+            }
+            try await RadarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient).addMovie(
+                tmdbID: tmdbID,
+                rootFolderPath: configuration.rootFolderPath,
+                monitor: configuration.monitor,
+                qualityProfileID: configuration.qualityProfileID,
+                minimumAvailability: configuration.minimumAvailability,
+                searchForMovie: configuration.searchForMovie
+            )
+        }
+    }
+
+    private static let sonarrMonitorOptions = [
+        DiscoverOption(id: "all", title: "All episodes"),
+        DiscoverOption(id: "future", title: "Future episodes"),
+        DiscoverOption(id: "missing", title: "Missing episodes"),
+        DiscoverOption(id: "existing", title: "Existing episodes"),
+        DiscoverOption(id: "pilot", title: "Pilot only"),
+        DiscoverOption(id: "none", title: "None"),
+    ]
+
+    private static let sonarrSeriesTypeOptions = [
+        DiscoverOption(id: "standard", title: "Standard"),
+        DiscoverOption(id: "daily", title: "Daily"),
+        DiscoverOption(id: "anime", title: "Anime"),
+    ]
+
+    private static let radarrMonitorOptions = [
+        DiscoverOption(id: "movieOnly", title: "Movie only"),
+        DiscoverOption(id: "movieAndCollection", title: "Movie and collection"),
+        DiscoverOption(id: "none", title: "None"),
+    ]
+
+    private static let radarrMinimumAvailabilityOptions = [
+        DiscoverOption(id: "announced", title: "Announced"),
+        DiscoverOption(id: "inCinemas", title: "In cinemas"),
+        DiscoverOption(id: "released", title: "Released"),
+    ]
 }
 
 public struct ArrServerConnectionValidator: ServerConnectionValidating {

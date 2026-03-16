@@ -1,23 +1,28 @@
 # Architecture
 
-The project follows a modular SwiftUI architecture.
+The project uses a hybrid modular SwiftUI architecture.
+
+## App shape
+
+- One app target: `PirratesCaptainApp`
+- Three local Swift packages:
+  - `PirratesCore`
+  - `PirratesIntegrations`
+  - `PirratesDesignSystem`
 
 ## Layers
-UI (SwiftUI)
-ViewModels
-Services / Networking
-Models
 
-## Modules
-Core
-Features
-Networking
+- Presentation: SwiftUI views and Observation-based view models
+- Domain: shared entities, protocols, and use-case oriented contracts
+- Data: local persistence, Keychain storage, and arr service clients
+
+## Dependency flow
+
+- Features depend on Core, Integrations, and DesignSystem
+- Integrations depend on Core
+- DesignSystem may depend on Core
+- Features do not import each other
 
 ## Networking
-Unified API wrapper for:
-- Sonarr
-- Radarr
-- Lidarr
-- Prowlarr
 
-Using async/await.
+The app communicates directly with configured arr services using async/await and service-specific clients.

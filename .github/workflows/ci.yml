@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -switch /Applications/Xcode.app
+
+      - name: Verify package tests
+        run: |
+          swift test --package-path Packages/PirratesCore
+          swift test --package-path Packages/PirratesIntegrations
+          swift test --package-path Packages/PirratesDesignSystem
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build app
+        run: |
+          xcodebuild \
+            -project PirratesCaptainApp.xcodeproj \
+            -scheme PirratesCaptainApp \
+            -destination 'generic/platform=iOS Simulator' \
+            build

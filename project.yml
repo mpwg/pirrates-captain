@@ -1,0 +1,45 @@
+name: PirratesCaptainApp
+options:
+  bundleIdPrefix: com.matthiaswallnergehri
+  minimumXcodeGenVersion: 2.45.0
+  deploymentTarget:
+    iOS: "26.0"
+packages:
+  PirratesCore:
+    path: Packages/PirratesCore
+  PirratesIntegrations:
+    path: Packages/PirratesIntegrations
+  PirratesDesignSystem:
+    path: Packages/PirratesDesignSystem
+targets:
+  PirratesCaptainApp:
+    type: application
+    platform: iOS
+    supportedDestinations:
+      - iOS
+      - macCatalyst
+    deploymentTarget: "26.0"
+    sources:
+      - path: App
+      - path: Features
+      - path: Shared
+    dependencies:
+      - package: PirratesCore
+      - package: PirratesIntegrations
+      - package: PirratesDesignSystem
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.matthiaswallnergehri.pirrates-captain
+        PRODUCT_NAME: Pirrates Captain
+        SWIFT_VERSION: 6.0
+        INFOPLIST_FILE: App/Info.plist
+        SUPPORTS_MACCATALYST: YES
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_STRICT_CONCURRENCY: complete
+schemes:
+  PirratesCaptainApp:
+    build:
+      targets:
+        PirratesCaptainApp: all

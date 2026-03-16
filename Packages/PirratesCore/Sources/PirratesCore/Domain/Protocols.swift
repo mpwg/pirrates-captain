@@ -16,6 +16,8 @@ public protocol DashboardProviding {
 @MainActor
 public protocol DiscoverProviding {
     func search(query: String) async throws -> [SearchResult]
+    func prepareAdd(for result: SearchResult) async throws -> DiscoverAddContext
+    func add(result: SearchResult, configuration: DiscoverAddConfiguration) async throws
 }
 
 @MainActor

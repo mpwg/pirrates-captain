@@ -42,7 +42,7 @@ public struct SonarrClient: Sendable {
             as: [SonarrSeriesDTO].self
         )
 
-        return results.map(SonarrSeriesMapper.map)
+        return results.compactMap { SonarrSeriesMapper.map($0, profile: profile) }
     }
 
     public func calendar(start: Date, end: Date) async throws -> [SonarrCalendarDTO] {
@@ -66,4 +66,55 @@ public struct SonarrClient: Sendable {
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: date)
     }
+
+    func qualityProfiles() async throws -> [QualityProfileDTO] {
+        try await client.send(APIRequest(path: "/api/v3/qualityprofile"), as: [QualityProfileDTO].self)
+    }
+
+    func rootFolders() async throws -> [RootFolderDTO] {
+        try await client.send(APIRequest(path: "/api/v3/rootfolder"), as: [RootFolderDTO].self)
+    }
+
+    public func addSeries(
+        tvdbID: Int,
+        rootFolderPath: String,
+        monitor: String,
+        qualityProfileID: Int,
+        seriesType: String,
+        seasonFolder: Bool,
+        searchForMissingEpisodes: Bool,
+        searchForCutoffUnmetEpisodes: Bool
+    ) async throws {
+        let payload = SonarrAddSeriesPayload(
+            tvdbId: tvdbID,
+            rootFolderPath: rootFolderPath,
+            monitor: monitor,
+            qualityProfileId: qualityProfileID,
+            seriesType: seriesType,
+            seasonFolder: seasonFolder,
+            addOptions: .init(
+                monitor: monitor,
+                searchForMissingEpisodes: searchForMissingEpisodes,
+                searchForCutoffUnmetEpisodes: searchForCutoffUnmetEpisodes
+            )
+        )
+
+        _ = try await client.send(APIRequest(path: "/api/v3/series", method: "POST", body: try JSONEncoder().encode(payload)), as: SonarrSeriesDTO.self)
+    }
+}
+
+private struct SonarrAddSeriesPayload: Encodable {
+    let tvdbId: Int
+    let rootFolderPath: String
+    let monitor: String
+    let qualityProfileId: Int
+    let seriesType: String
+    let seasonFolder: Bool
+    let addOptions: SonarrAddSeriesOptionsPayload
+}
+
+private struct SonarrAddSeriesOptionsPayload: Encodable {
+    let monitor: String
+    let searchForMissingEpisodes: Bool
+    let searchForCutoffUnmetEpisodes: Bool
 }

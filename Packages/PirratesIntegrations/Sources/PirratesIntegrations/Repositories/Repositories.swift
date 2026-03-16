@@ -9,10 +9,22 @@ public final class ServiceHealthChecker: HealthChecking {
         profiles.map { profile in
             ServiceHealth(
                 service: profile.kind,
-                status: profile.isEnabled ? .healthy : .offline,
-                message: profile.isEnabled ? "Configured" : "Disabled"
+                status: profile.isEnabled ? (profile.allowsInsecureConnections ? .degraded : .healthy) : .offline,
+                message: healthMessage(for: profile)
             )
         }
+    }
+
+    private func healthMessage(for profile: ServerProfile) -> String {
+        if !profile.isEnabled {
+            return "Disabled"
+        }
+
+        if profile.allowsInsecureConnections {
+            return "Configured over HTTP"
+        }
+
+        return "Configured over HTTPS"
     }
 }
 
@@ -31,9 +43,9 @@ public final class DashboardRepository: DashboardProviding {
         let health = await healthChecker.checkHealth(for: profiles)
 
         return DashboardSnapshot(
-            queueCount: profiles.count * 2,
-            recentItems: profiles.map { "\($0.kind.displayName) recently added item" },
-            upcomingItems: profiles.map { "\($0.kind.displayName) upcoming release" },
+            queueCount: profiles.count,
+            recentItems: profiles.map { "\($0.kind.displayName) server \($0.name)" },
+            upcomingItems: profiles.map { "\($0.kind.displayName) monitoring active" },
             health: health
         )
     }

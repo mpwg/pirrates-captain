@@ -1,7 +1,7 @@
 name: PirratesCaptainApp
 options:
   bundleIdPrefix: com.matthiaswallnergehri
-  minimumXcodeGenVersion: 2.45.0
+  minimumXcodeGenVersion: 2.44.1
   deploymentTarget:
     iOS: "26.0"
 packages:

@@ -16,7 +16,9 @@ public final class ServiceHealthChecker: HealthChecking {
 
         for profile in profiles {
             if !profile.isEnabled {
-                healthStates.append(ServiceHealth(service: profile.kind, status: .offline, message: "Disabled"))
+                healthStates.append(
+                    ServiceHealth(serverName: profile.name, service: profile.kind, status: .offline, message: "Disabled")
+                )
                 continue
             }
 
@@ -25,6 +27,7 @@ public final class ServiceHealthChecker: HealthChecking {
                 try await validator.validateServer(profile, apiKey: apiKey)
                 healthStates.append(
                     ServiceHealth(
+                        serverName: profile.name,
                         service: profile.kind,
                         status: profile.allowsInsecureConnections ? .degraded : .healthy,
                         message: profile.allowsInsecureConnections ? "Connected over HTTP" : "Connected"
@@ -43,15 +46,15 @@ public final class ServiceHealthChecker: HealthChecking {
     private static func health(for profile: ServerProfile, error: AppError) -> ServiceHealth {
         switch error {
         case .authenticationFailed:
-            ServiceHealth(service: profile.kind, status: .unauthorized, message: error.localizedDescription)
+            ServiceHealth(serverName: profile.name, service: profile.kind, status: .unauthorized, message: error.localizedDescription)
         case .unreachableServer:
-            ServiceHealth(service: profile.kind, status: .offline, message: error.localizedDescription)
+            ServiceHealth(serverName: profile.name, service: profile.kind, status: .offline, message: error.localizedDescription)
         case .rateLimited:
-            ServiceHealth(service: profile.kind, status: .degraded, message: error.localizedDescription)
+            ServiceHealth(serverName: profile.name, service: profile.kind, status: .degraded, message: error.localizedDescription)
         case let .validationFailed(message):
-            ServiceHealth(service: profile.kind, status: .degraded, message: message)
+            ServiceHealth(serverName: profile.name, service: profile.kind, status: .degraded, message: message)
         case let .unknown(message):
-            ServiceHealth(service: profile.kind, status: .degraded, message: message)
+            ServiceHealth(serverName: profile.name, service: profile.kind, status: .degraded, message: message)
         }
     }
 }
@@ -75,17 +78,40 @@ public final class DashboardRepository: DashboardProviding {
     public func loadDashboard() async throws -> DashboardSnapshot {
         let profiles = try serverManager.profiles().filter(\.isEnabled)
         let health = await healthChecker.checkHealth(for: profiles)
+        let now = Date()
+        let recentWindowStart = Calendar.current.date(byAdding: .day, value: -7, to: now) ?? now
+        let upcomingWindowEnd = Calendar.current.date(byAdding: .day, value: 14, to: now) ?? now
         var totalQueueCount = 0
+        var recentItems: [DashboardItem] = []
+        var upcomingItems: [DashboardItem] = []
 
         for profile in profiles {
-            let apiKey = try serverManager.apiKey(for: profile.id)
-            totalQueueCount += try await fetchQueueCount(for: profile, apiKey: apiKey)
+            do {
+                let apiKey = try serverManager.apiKey(for: profile.id)
+                totalQueueCount += try await fetchQueueCount(for: profile, apiKey: apiKey)
+                recentItems += try await fetchCalendarItems(
+                    for: profile,
+                    apiKey: apiKey,
+                    start: recentWindowStart,
+                    end: now,
+                    isUpcoming: false
+                )
+                upcomingItems += try await fetchCalendarItems(
+                    for: profile,
+                    apiKey: apiKey,
+                    start: now,
+                    end: upcomingWindowEnd,
+                    isUpcoming: true
+                )
+            } catch {
+                continue
+            }
         }
 
         return DashboardSnapshot(
             queueCount: totalQueueCount,
-            recentItems: [],
-            upcomingItems: [],
+            recentItems: recentItems.sorted(using: DashboardRepository.recentSort).prefix(6).map(\.self),
+            upcomingItems: upcomingItems.sorted(using: DashboardRepository.upcomingSort).prefix(6).map(\.self),
             health: health
         )
     }
@@ -106,6 +132,53 @@ public final class DashboardRepository: DashboardProviding {
             return 0
         }
     }
+
+    private func fetchCalendarItems(
+        for profile: ServerProfile,
+        apiKey: String?,
+        start: Date,
+        end: Date,
+        isUpcoming: Bool
+    ) async throws -> [DashboardItem] {
+        switch profile.kind {
+        case .sonarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Sonarr.")
+            }
+            let entries = try await SonarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+                .calendar(start: start, end: end)
+            return entries.map { entry in
+                DashboardItem(
+                    title: entry.series?.title ?? entry.title,
+                    detail: isUpcoming ? entry.title : "Aired: \(entry.title)",
+                    service: .sonarr,
+                    serverName: profile.name,
+                    date: entry.airDateUtc
+                )
+            }
+        case .radarr:
+            guard let apiKey, !apiKey.isEmpty else {
+                throw AppError.validationFailed("An API key is required for Radarr.")
+            }
+            let entries = try await RadarrClient(profile: profile, apiKey: apiKey, httpClient: httpClient)
+                .calendar(start: start, end: end)
+            return entries.compactMap { entry in
+                guard let date = entry.releaseDate else { return nil }
+                return DashboardItem(
+                    title: entry.title,
+                    detail: isUpcoming ? "Release scheduled" : "Recently released",
+                    service: .radarr,
+                    serverName: profile.name,
+                    date: date
+                )
+            }
+        case .lidarr, .prowlarr, .sabnzbd:
+            return []
+        }
+    }
+
+    private static let recentSort = SortDescriptor(\DashboardItem.date, order: .reverse)
+    private static let upcomingSort = SortDescriptor(\DashboardItem.date, order: .forward)
 }
 
 @MainActor

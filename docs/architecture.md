@@ -26,3 +26,9 @@ The project uses a hybrid modular SwiftUI architecture.
 ## Networking
 
 The app communicates directly with configured arr services using async/await and service-specific clients.
+
+## Dashboard data flow
+
+- Dashboard health is tracked per configured server, not just per service type.
+- Sonarr and Radarr dashboard content is sourced from live `queue` and `calendar` endpoints.
+- Partial service failures degrade only the affected server cards; the dashboard still renders remaining data.

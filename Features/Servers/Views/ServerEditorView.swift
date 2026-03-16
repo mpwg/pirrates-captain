@@ -32,6 +32,15 @@ struct ServerEditorView: View {
                     Toggle("Allow insecure HTTP", isOn: $viewModel.draft.allowsInsecureConnections)
                 }
 
+                if !viewModel.draft.validationMessages.isEmpty {
+                    Section("Validation") {
+                        ForEach(viewModel.draft.validationMessages, id: \.self) { message in
+                            Text(message)
+                                .foregroundStyle(message.contains("not implemented in the MVP") ? Color.secondary : .red)
+                        }
+                    }
+                }
+
                 if let editorError = viewModel.editorErrorMessage {
                     Section {
                         Text(editorError)
@@ -57,7 +66,7 @@ struct ServerEditorView: View {
                             }
                         }
                     }
-                    .disabled(viewModel.isSaving)
+                    .disabled(viewModel.isSaving || viewModel.draft.validationMessages.contains { !$0.contains("not implemented in the MVP") })
                 }
             }
         }
